@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "factor-mart"
+version = "0.1.0"
+description = "Cross-sectional equity factor mart: portable SQL models on Snowflake (and DuckDB for tests), Power BI on top"
+requires-python = ">=3.10"
+dependencies = ["pandas>=2.0", "pyarrow"]
+
+[project.optional-dependencies]
+snowflake = ["snowflake-connector-python[pandas]", "python-dotenv"]
+postgres = ["sqlalchemy>=2.0", "psycopg2-binary"]
+dev = ["duckdb", "pytest", "numpy"]
+
+[project.scripts]
+factor-mart = "factor_mart.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+factor_mart = ["sql/*.sql"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

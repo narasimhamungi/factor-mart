@@ -1,0 +1,44 @@
+// Paste into Power BI Desktop (Modeling > New measure). Tables per powerbi/MODEL.md.
+// All measures respect the Factor slicer (dim_factor) and any date filter on dim_month.
+
+LS Return (month) =
+    AVERAGE ( mart_factor_returns[ls_ret] )
+
+Ann. LS Return =
+    AVERAGE ( mart_factor_returns[ls_ret] ) * 12
+
+Ann. LS Vol =
+    STDEV.S ( mart_factor_returns[ls_ret] ) * SQRT ( 12 )
+
+LS Sharpe =
+    DIVIDE ( [Ann. LS Return], [Ann. LS Vol] )
+
+Hit Rate =
+    DIVIDE (
+        COUNTROWS ( FILTER ( mart_factor_returns, mart_factor_returns[ls_ret] > 0 ) ),
+        COUNTROWS ( mart_factor_returns )
+    )
+
+Mean IC =
+    AVERAGE ( mart_ic[ic] )
+
+ICIR =
+    DIVIDE ( [Mean IC], STDEV.S ( mart_ic[ic] ) )
+
+// Growth of 1 in the long-short spread, compounded monthly, as of the latest visible month.
+// Needs relationships mart_factor_returns -> dim_month and dim_factor (see MODEL.md).
+Cumulative LS =
+    VAR _d = MAX ( dim_month[month_end] )
+    RETURN
+        PRODUCTX (
+            FILTER ( ALL ( dim_month[month_end] ), dim_month[month_end] <= _d ),
+            1 + CALCULATE ( AVERAGE ( mart_factor_returns[ls_ret] ) )
+        ) - 1
+
+// Reconciliation helper: should equal mart_factor_summary[ann_ls_return] for the selected factor
+// when no date filter is applied. Put both on a card to prove DAX == SQL.
+SQL Summary Ann. LS =
+    CALCULATE ( MAX ( mart_factor_summary[ann_ls_return] ) )
+
+DAX vs SQL Diff (Ann. LS) =
+    [Ann. LS Return] - [SQL Summary Ann. LS]

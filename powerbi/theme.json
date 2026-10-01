@@ -1,0 +1,11 @@
+{
+  "name": "factor-mart",
+  "dataColors": ["#1F3A5F", "#C8553D", "#4F772D", "#8D6A9F", "#D9A441", "#5B8E7D"],
+  "background": "#FFFFFF",
+  "foreground": "#1B1B1B",
+  "tableAccent": "#1F3A5F",
+  "textClasses": {
+    "title": {"fontFace": "Segoe UI Semibold", "fontSize": 14},
+    "label": {"fontFace": "Segoe UI", "fontSize": 10}
+  }
+}
