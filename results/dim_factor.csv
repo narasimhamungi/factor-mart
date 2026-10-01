@@ -1,0 +1,5 @@
+factor,label,direction,definition
+beta_252d,Low beta (252d),-1,Beta vs equal-weight universe return over 252 obs; low beta scores high
+mom_12_1,Momentum (12-1),1,Price(t-21d) / Price(t-252d) - 1; skips most recent month
+rev_21d,Short-term reversal (1M),-1,Price(t) / Price(t-21d) - 1; losers score high
+vol_63d,Low volatility (63d),-1,Annualised stdev of daily returns over 63 obs; low vol scores high

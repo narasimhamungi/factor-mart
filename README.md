@@ -9,10 +9,12 @@ top (not built yet). The point is the engineering - **not** a claim that any fac
 ## Verification status (as of 2026-10-01)
 | Claim | Status |
 |---|---|
-| SQL logic correct | **Demonstrated** - 24 tests on DuckDB: exact beta recovery on noise-free factor data, momentum/reversal vs a pandas reference, zero vol for constant returns, gap handling, perfect +/-1 IC and monotone quintiles on constructed data, injected-duplicate detection, parity-checker self-tests |
+| SQL logic correct | **Demonstrated** - 25 tests on DuckDB: exact beta recovery on noise-free factor data, momentum/reversal vs a pandas reference, zero vol for constant returns, gap handling, perfect +/-1 IC and monotone quintiles on constructed data, injected-duplicate detection, parity-checker self-tests |
 | Pipeline runs on real data | **Demonstrated** - lakehouse consensus prices: 957,361 rows, 503 tickers after de-duplication; all post-run checks pass |
 | Pipeline runs on Snowflake | **Demonstrated** - full run on a Snowflake trial account, key-pair authentication, all checks pass |
 | DuckDB and Snowflake agree | **Demonstrated** - `python -m factor_mart.parity`: identical row counts on all 11 tables, 0 quintile disagreements across 169,289 rows, max score difference 8e-15, summary statistics equal to float precision. The check found one real engine difference (Snowflake's `AVG` over decimal literals rounds to 6 places, off by 4.8e-7 on `hit_rate`); fixed by casting to DOUBLE |
+| CI | **Demonstrated** - GitHub Actions runs the DuckDB test suite on Python 3.12 and 3.14 for every push (badge above). The Snowflake load and the parity check need credentials and are run manually |
+| Results reproducible without a warehouse | **Demonstrated** - `results/` holds the four mart tables as CSV plus a manifest; `python -m factor_mart.report` regenerates the CSVs and charts |
 | Power BI model / DAX | **Not built.** `powerbi/` holds the DAX and model spec only; its reconciliation page is the planned test |
 | Factor performance is investable | **No.** See Results and Known limitations |
 
@@ -24,6 +26,7 @@ top (not built yet). The point is the engineering - **not** a claim that any fac
 | Checks | `checks.py` - duplicates, winsor band, quintile balance, top>bottom ordering, factor coverage; warnings for >80% monthly moves and for thin effective history |
 | Backends | DuckDB (tests/offline) and Snowflake - **same SQL files**, limited to constructs both engines accept |
 | Parity | `parity.py` - row counts, summary statistics and row-level scores/quintiles compared across the two engines |
+| Reporting | `report.py` - exports the marts to `results/` (CSV, charts, manifest) so the README does not depend on a live Snowflake account |
 | BI | `powerbi/` - DAX measures, model spec, theme (unbuilt) |
 
 ## Input data (marketdata-lakehouse)
@@ -58,13 +61,19 @@ Real lakehouse data, 2019-02 to 2026-09, run of 2026-10-01. L/S = top minus bott
 \*Naive t-statistics derived from the table: t(L/S) = Sharpe x sqrt(months/12), t(IC) = ICIR x sqrt(months); no
 adjustment for autocorrelation or multiple testing.
 
+![Cumulative top-minus-bottom quintile spread by factor](results/cumulative_ls_spread.png)
+
+![Monthly rank IC by factor](results/ic_by_month.png)
+
+The numbers above and the charts come from the snapshot in [`results/`](results/) (see `results/MANIFEST.txt`).
+
 What this does and does not show:
 - Momentum and reversal are statistically indistinguishable from zero (|t| about 1 or less). No factor's mean IC is distinguishable from zero (|t| < 1.4).
 - The low-volatility and low-beta quintile spreads are negative with naive |t| of 2.3-2.6 over 80-89 months. Inference, not tested here: consistent with high-beta/growth leadership and the 2020 rebound in this window; there is no sector or size neutralisation to separate those effects.
 - None of this is evidence about factor premia in general (see limitations).
 
 ## Known limitations (state these in interviews before a reviewer does)
-- **Survivorship bias:** the universe is the lakehouse's S&P 500 list at ingestion time (inferred from the lakehouse design, not verified here), so delisted or removed names are likely absent.
+- **Survivorship and look-ahead bias:** the scored universe is today's constituent list back-filled. Evidence from this run: PLTR has forward returns from the 2020-10-30 formation date and SMCI from 2023-04-28, but the index added them in September 2024 and March 2024 (index-join dates are from the public record, not verified in this repo). Names that left the index and delisted names are absent, and names are included before they qualified, so spreads here are not what an investor could have earned.
 - Short sample: 80-91 monthly observations per factor; Sharpe ratios carry wide error bars.
 - Equal-weight proxy includes the stock; with 500 names the bias is small, with 20 it is not.
 - Gross of costs, no turnover, no sector/size neutralisation, no liquidity filter.
@@ -83,12 +92,20 @@ python -m factor_mart run --backend duckdb --postgres-url $env:PGURL --query-fil
 # Snowflake: run snowflake\00_setup.sql once in Snowsight, copy .env.example to .env (key-pair auth), then
 python -m factor_mart run --backend snowflake --postgres-url $env:PGURL --query-file queries\lakehouse_consensus.sql --dup-tol 1e-5 --min-universe 30
 python -m factor_mart.parity      # DuckDB vs Snowflake: must end in PARITY OK
+python -m factor_mart.report      # results/ : CSV snapshot, two charts, manifest
 ```
 Input must expose `ticker, trade_date, adj_close`; alias columns in the query file if your table differs.
 
 ## Power BI
 Not built yet. `powerbi/MODEL.md` describes the model, relationships and report pages; `powerbi/measures.dax`
 holds the measures. The planned reconciliation page compares DAX output with `mart_factor_summary`.
+
+## Related projects
+- [marketdata-lakehouse](https://github.com/narasimhamungi/marketdata-lakehouse) - the multi-source price warehouse this reads from.
+- [snowflake-bi-lab](https://github.com/narasimhamungi/snowflake-bi-lab) - loads the same gold layer into Snowflake with a data-quality suite and a Power BI report.
+
+## License
+MIT - see [LICENSE](LICENSE).
 
 ## Employer takeaway
 Modelled warehouse layers with explicit contracts and invariants, engine-portable SQL verified by a

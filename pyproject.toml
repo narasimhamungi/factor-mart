@@ -12,7 +12,8 @@ dependencies = ["pandas>=2.0", "pyarrow"]
 [project.optional-dependencies]
 snowflake = ["snowflake-connector-python[pandas]", "python-dotenv"]
 postgres = ["sqlalchemy>=2.0", "psycopg2-binary"]
-dev = ["duckdb", "pytest", "numpy"]
+dev = ["duckdb", "pytest", "numpy", "matplotlib"]
+report = ["matplotlib"]
 
 [project.scripts]
 factor-mart = "factor_mart.cli:main"
