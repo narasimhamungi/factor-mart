@@ -1,5 +1,7 @@
 # factor-mart
 
+[![DuckDB tests](https://github.com/narasimhamungi/factor-mart/actions/workflows/ci.yml/badge.svg)](https://github.com/narasimhamungi/factor-mart/actions/workflows/ci.yml)
+
 Cross-sectional equity factor mart: portable SQL models that run unchanged on DuckDB and Snowflake,
 an input data contract, post-run invariants, and a DuckDB-vs-Snowflake parity check. Power BI sits on
 top (not built yet). The point is the engineering - **not** a claim that any factor earns excess return.
