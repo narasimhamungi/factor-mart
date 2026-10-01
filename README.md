@@ -77,7 +77,7 @@ Interpretation (inference, untested here): any sign pattern may reflect this sam
 
 ## Known limitations (state these in interviews before a reviewer does)
 - **Survivorship and look-ahead bias:** the scored universe is today's constituent list back-filled. Evidence from this run: PLTR has forward returns from the 2020-10-30 formation date and SMCI from 2023-04-28, but the index added them in September 2024 and March 2024 (index-join dates are from the public record, not verified in this repo). Names that left the index and delisted names are absent, and names are included before they qualified, so spreads here are not what an investor could have earned.
-- Short sample: 80-91 monthly observations per factor; Sharpe ratios carry wide error bars.
+- Short sample: roughly 80-90 monthly observations per factor (see the Months column); Sharpe ratios carry wide error bars.
 - Equal-weight proxy includes the stock; with 500 names the bias is small, with 20 it is not.
 - Gross of costs, no turnover, no sector/size neutralisation, no liquidity filter.
 - `adj_close` quality is inherited from the lakehouse; the >80% warning is a tripwire, not a guarantee (the 23 flagged ticker-months look like real market events but were not individually verified against an external source).
