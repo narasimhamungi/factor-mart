@@ -142,3 +142,21 @@ def test_checks_warn_when_most_months_unscored(backend, params):
     build(backend, params, pd.concat([px, early], ignore_index=True))
     _fails, warns = run_checks(backend, params)
     assert any("calendar months" in w for w in warns)
+
+
+def test_latest_partial_month_is_not_a_rebalance_date(backend, params):
+    px = make_prices([0.8, 0.9, 1.0, 1.1, 1.2, 1.3], n_days=300, noise=0.01)  # ends mid-month
+    build(backend, params, px, only=["00", "01", "02"])
+    last_market = backend.query_df("SELECT MAX(trade_date) AS d FROM core.market").iloc[0, 0]
+    reb = backend.query_df("SELECT rebalance_date FROM core.rebalance_dates")
+    last_ym = last_market.year * 12 + last_market.month
+    assert (pd.to_datetime(reb.rebalance_date).dt.year * 12 + pd.to_datetime(reb.rebalance_date).dt.month < last_ym).all()
+
+
+def test_no_forward_return_ends_in_the_partial_month(backend, params):
+    betas = np.linspace(0.4, 1.6, 20)
+    build(backend, params, make_prices(betas, n_days=700, noise=0.006))
+    last_market = backend.query_df("SELECT MAX(trade_date) AS d FROM core.market").iloc[0, 0]
+    ends = backend.query_df("SELECT MAX(rebalance_date) AS d FROM core.fwd_returns WHERE fwd_ret_1m IS NOT NULL").iloc[0, 0]
+    # the last formation date that has a forward return must be at least one full month before the data end
+    assert (last_market.year * 12 + last_market.month) - (ends.year * 12 + ends.month) >= 2

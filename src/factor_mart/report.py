@@ -1,6 +1,7 @@
 """Export the marts to CSV and draw the two README charts.
 
     python -m factor_mart.report [--backend duckdb|snowflake] [--duckdb-path factor_mart.duckdb] [--out results]
+                                 [--update-readme README.md]
 
 Writes into --out: the four small mart tables as CSV, cumulative_ls_spread.png, ic_by_month.png and
 MANIFEST.txt (engine, row counts, window, generation time). The CSVs make the numbers in the README
@@ -46,6 +47,69 @@ def _read(backend: Backend, schema: str, table: str, sort: list[str]) -> pd.Data
 def _footer(first, last) -> str:
     return (f"Formation dates {first} to {last}. Equal-weight quintiles, gross of costs, no neutralisation.\n"
             "Universe taken from the lakehouse (survivorship-biased). Not evidence of factor premia.")
+
+
+RESULTS_START = "<!-- results:start -->"
+RESULTS_END = "<!-- results:end -->"
+
+
+def results_block(summary: pd.DataFrame, labels: dict, order: list[str], first, last) -> str:
+    """Markdown table + data-driven bullets, so README numbers are never typed by hand."""
+    s = summary.set_index("factor")
+    rows, stats = [], {}
+    for f in order:
+        if f not in s.index:
+            continue
+        r = s.loc[f]
+        n = int(r["n_months"])
+        t_ls = float(r["ls_sharpe"]) * np.sqrt(n / 12)
+        t_ic = float(r["icir"]) * np.sqrt(n)
+        stats[f] = (t_ls, t_ic, float(r["ann_ls_return"]))
+        rows.append(f"| {labels.get(f, f)} | {n} | {r['ann_ls_return'] * 100:+.1f}% | {r['ann_ls_vol'] * 100:.1f}% | "
+                    f"{r['ls_sharpe']:.2f} | {r['hit_rate'] * 100:.1f}% | {r['mean_ic']:+.3f} | {r['icir']:.2f} | "
+                    f"{t_ls:.2f} | {t_ic:.2f} |")
+
+    name = lambda f: labels.get(f, f)  # noqa: E731
+    flat = [f for f, (tl, ti, _) in stats.items() if abs(tl) < 2 and abs(ti) < 2]
+    spread = [f for f, (tl, ti, _) in stats.items() if abs(tl) >= 2]
+    ic_only = [f for f, (tl, ti, _) in stats.items() if abs(tl) < 2 and abs(ti) >= 2]
+    bullets = []
+    if flat:
+        bullets.append("- Indistinguishable from zero on both the quintile spread and the IC (naive |t| < 2): "
+                       + ", ".join(name(f) for f in flat) + ".")
+    if spread:
+        bullets.append("- Quintile spread distinguishable from zero at naive |t| >= 2: "
+                       + "; ".join(f"{name(f)} (t = {stats[f][0]:.2f}, {stats[f][2] * 100:+.1f}% a year)" for f in spread) + ".")
+    if ic_only:
+        bullets.append("- IC (but not the spread) distinguishable from zero at naive |t| >= 2: "
+                       + ", ".join(f"{name(f)} (t = {stats[f][1]:.2f})" for f in ic_only) + ".")
+    bullets.append("- None of this is evidence about factor premia in general (see limitations).")
+
+    body = [
+        f"Real lakehouse data, formation dates {first} to {last} (each return is earned over the following month). "
+        "L/S = top minus bottom quintile, gross of costs.",
+        "",
+        "| Factor | Months | Ann. L/S return | Ann. L/S vol | L/S Sharpe | Hit rate | Mean IC | ICIR | t (L/S)* | t (IC)* |",
+        "|---|---|---|---|---|---|---|---|---|---|",
+        *rows,
+        "",
+        "\\*Naive t-statistics derived from the table: t(L/S) = Sharpe x sqrt(months/12), t(IC) = ICIR x sqrt(months); "
+        "no adjustment for autocorrelation or multiple testing.",
+        "",
+        "What the numbers show:",
+        *bullets,
+    ]
+    return RESULTS_START + "\n" + "\n".join(body) + "\n" + RESULTS_END
+
+
+def update_readme(path: Path | str, block: str) -> None:
+    p = Path(path)
+    text = p.read_text(encoding="utf-8")
+    if RESULTS_START not in text or RESULTS_END not in text:
+        raise ValueError(f"{p} has no {RESULTS_START} ... {RESULTS_END} markers")
+    head, rest = text.split(RESULTS_START, 1)
+    _, tail = rest.split(RESULTS_END, 1)
+    p.write_text(head + block + tail, encoding="utf-8", newline="\n")
 
 
 def _cumulative_chart(returns: pd.DataFrame, order: list[str], labels: dict, path: Path, footer: str) -> None:
@@ -95,7 +159,7 @@ def _ic_chart(ic: pd.DataFrame, order: list[str], labels: dict, path: Path, foot
 
 
 def generate(backend: Backend, out_dir: Path | str, schema: str = "core",
-             now: dt.datetime | None = None) -> list[Path]:
+             now: dt.datetime | None = None, readme: Path | str | None = None) -> list[Path]:
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     written: list[Path] = []
@@ -112,6 +176,8 @@ def generate(backend: Backend, out_dir: Path | str, schema: str = "core",
     returns, ic = frames["mart_factor_returns"], frames["mart_ic"]
     first, last = returns["rebalance_date"].min(), returns["rebalance_date"].max()
     footer = _footer(first, last)
+    if readme:
+        update_readme(readme, results_block(frames["mart_factor_summary"], labels, order, first, last))
 
     p = out / "cumulative_ls_spread.png"
     _cumulative_chart(returns, order, labels, p, footer)
@@ -143,6 +209,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--duckdb-path", default="factor_mart.duckdb")
     ap.add_argument("--schema", default="core")
     ap.add_argument("--out", default="results")
+    ap.add_argument("--update-readme", default=None, help="rewrite the results block between the markers in this README")
     args = ap.parse_args(argv)
 
     if args.backend == "duckdb":
@@ -155,7 +222,7 @@ def main(argv: list[str] | None = None) -> int:
         from factor_mart.config import SnowflakeSettings
         backend = SnowflakeBackend(SnowflakeSettings.from_env())
 
-    for p in generate(backend, args.out, args.schema):
+    for p in generate(backend, args.out, args.schema, readme=args.update_readme):
         print(f"wrote {p}")
     return 0
 

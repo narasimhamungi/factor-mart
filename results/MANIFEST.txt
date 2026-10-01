@@ -1,6 +1,6 @@
-generated: 2026-10-01 20:51 UTC
+generated: 2026-10-01 20:57 UTC
 engine: duckdb
 raw_prices: 957,361 rows, 503 tickers, 2009-01-02 00:00:00 to 2026-09-11 00:00:00
-scored window (formation dates): 2019-02-28 to 2026-08-31, 91 months
-rows: mart_factor_summary=4, mart_factor_returns=340, mart_ic=340, dim_factor=4
+scored window (formation dates): 2019-02-28 to 2026-07-31, 90 months
+rows: mart_factor_summary=4, mart_factor_returns=336, mart_ic=336, dim_factor=4
 reproduce: python -m factor_mart.report
