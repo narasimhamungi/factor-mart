@@ -41,7 +41,7 @@ class DuckDBBackend:
 
 
 class SnowflakeBackend:
-    """NOT yet exercised against a live account - see README 'Verification status'."""
+    """Snowflake via key-pair auth; run live on a trial account (README 'Verification status')."""
     name = "snowflake"
 
     def __init__(self, settings: SnowflakeSettings):

@@ -75,7 +75,7 @@ The table and charts come from the snapshot in [`results/`](results/) (see `resu
 
 Interpretation (inference, untested here): any sign pattern may reflect this sample window (for example the 2020 rebound and high-beta/growth leadership) and the lack of sector or size neutralisation. This repo tests neither explanation.
 
-## Known limitations (state these in interviews before a reviewer does)
+## Known limitations
 - **Survivorship and look-ahead bias:** the scored universe is today's constituent list back-filled. Evidence from this run: PLTR has forward returns from the 2020-10-30 formation date and SMCI from 2023-04-28, but the index added them in September 2024 and March 2024 (index-join dates are from the public record, not verified in this repo). Names that left the index and delisted names are absent, and names are included before they qualified, so spreads here are not what an investor could have earned.
 - Short sample: roughly 80-90 monthly observations per factor (see the Months column); Sharpe ratios carry wide error bars.
 - Equal-weight proxy includes the stock; with 500 names the bias is small, with 20 it is not.
@@ -105,7 +105,7 @@ holds the measures. The planned reconciliation page compares DAX output with `ma
 
 ## Related projects
 - [marketdata-lakehouse](https://github.com/narasimhamungi/marketdata-lakehouse) - the multi-source price warehouse this reads from.
-- [snowflake-bi-lab](https://github.com/narasimhamungi/snowflake-bi-lab) - loads the same gold layer into Snowflake with a data-quality suite and a Power BI report.
+- [snowflake-bi-lab](https://github.com/narasimhamungi/snowflake-bi-lab) - loads the same gold layer into Snowflake with load verification and a data-quality suite.
 
 ## License
 MIT - see [LICENSE](LICENSE).
